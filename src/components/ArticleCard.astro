@@ -1,0 +1,78 @@
+---
+import type { Article } from '../pages/articles/[slug].astro';
+
+interface Props {
+  article: Article;
+  // Passé uniquement depuis la page listing pour le filtre JS côté client
+  categorySlug?: string;
+}
+
+const { article, categorySlug } = Astro.props;
+---
+
+<li data-category={categorySlug ?? 'all'}>
+  {article.categorie && (
+    <span class="badge">{article.categorie.Nom}</span>
+  )}
+  <h3>
+    <a href={`/articles/${article.Slug}`}>{article.Titre}</a>
+  </h3>
+  <time datetime={article.publishedAt}>
+    {new Date(article.publishedAt).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })}
+  </time>
+</li>
+
+<style>
+  li {
+    background: white;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    list-style: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
+    border-left: 3px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  li:hover {
+    border-left-color: #2563eb;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+
+  h3 a {
+    color: #18181b;
+    text-decoration: none;
+  }
+
+  h3 a:hover {
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  time {
+    font-size: 0.8rem;
+    color: #71717a;
+  }
+</style>

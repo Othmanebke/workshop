@@ -1,0 +1,186 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import SearchBar from '../../components/SearchBar.astro';
+import { fetchAllArticlesREST, fetchCategoriesREST } from '../../lib/api';
+import type { Article } from './[slug].astro';
+
+// REST — approche classique, simple et lisible
+const articles   = await fetchAllArticlesREST()   as unknown as Article[];
+const categories = await fetchCategoriesREST();
+
+---
+
+<Layout
+  title="Tous les articles"
+  description="Parcourez tous les articles du blog."
+>
+  <h1>Articles</h1>
+
+  <SearchBar />
+
+  <!-- Filtres par catégorie -->
+  <div class="filtres">
+    <button class="filtre actif" data-filter="all">Tous</button>
+    {categories.map((cat) => (
+      <button class="filtre" data-filter={cat.slug}>{cat.Nom}</button>
+    ))}
+  </div>
+
+  <!-- Liste des articles (tous rendus, le JS masque les non-visibles) -->
+  <ul id="liste-articles">
+    {articles.map((article) => (
+      <ArticleCard
+        article={article}
+        categorySlug={article.categorie?.slug ?? 'sans-categorie'}
+      />
+    ))}
+  </ul>
+
+  <!-- Message si aucun article dans le filtre -->
+  <p id="aucun-resultat" style="display:none; color: #71717a; text-align:center; padding: 2rem 0;">
+    Aucun article dans cette catégorie.
+  </p>
+
+  <!-- Pagination -->
+  <div id="pagination" class="pagination"></div>
+</Layout>
+
+<style>
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+  }
+
+  ul {
+    padding: 0;
+  }
+
+  .filtres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .filtre {
+    background: white;
+    border: 1px solid #e4e4e7;
+    border-radius: 999px;
+    padding: 0.35rem 1rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #3f3f46;
+  }
+
+  .filtre:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+  }
+
+  .filtre.actif {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+  }
+
+  /* Ces classes sont injectées par le JS — elles doivent être globales */
+</style>
+
+<style is:global>
+  .page-btn {
+    background: white;
+    border: 1px solid #e4e4e7;
+    border-radius: 6px;
+    padding: 0.4rem 0.85rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #3f3f46;
+    transition: all 0.15s;
+  }
+
+  .page-btn:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+  }
+
+  .page-btn.actif {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+  }
+</style>
+
+<script>
+  const ARTICLES_PAR_PAGE = 6;
+  let pageActuelle = 1;
+  let filtreActif = 'all';
+
+  const liste = document.getElementById('liste-articles');
+  const aucunResultat = document.getElementById('aucun-resultat');
+  const paginationEl = document.getElementById('pagination');
+  const boutonsFiltre = document.querySelectorAll('.filtre');
+
+  function getArticlesFiltres() {
+    const items = Array.from(liste.querySelectorAll('li'));
+    if (filtreActif === 'all') return items;
+    return items.filter((li) => li.dataset.category === filtreActif);
+  }
+
+  function afficher() {
+    const tous = Array.from(liste.querySelectorAll('li'));
+    const filtres = getArticlesFiltres();
+    const total = filtres.length;
+    const nbPages = Math.ceil(total / ARTICLES_PAR_PAGE);
+
+    if (pageActuelle > nbPages) pageActuelle = 1;
+
+    const debut = (pageActuelle - 1) * ARTICLES_PAR_PAGE;
+    const fin = debut + ARTICLES_PAR_PAGE;
+    const visibles = new Set(filtres.slice(debut, fin));
+
+    tous.forEach((li) => {
+      li.style.display = visibles.has(li) ? '' : 'none';
+    });
+
+    aucunResultat.style.display = total === 0 ? 'block' : 'none';
+
+    // Pagination
+    paginationEl.innerHTML = '';
+    for (let i = 1; i <= nbPages; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'page-btn' + (i === pageActuelle ? ' actif' : '');
+      btn.textContent = String(i);
+      btn.addEventListener('click', () => {
+        pageActuelle = i;
+        afficher();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      paginationEl.appendChild(btn);
+    }
+  }
+
+  boutonsFiltre.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      filtreActif = btn.dataset.filter;
+      pageActuelle = 1;
+
+      boutonsFiltre.forEach((b) => b.classList.remove('actif'));
+      btn.classList.add('actif');
+
+      afficher();
+    });
+  });
+
+  // Premier affichage
+  afficher();
+</script>

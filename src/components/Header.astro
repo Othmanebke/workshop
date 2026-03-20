@@ -1,0 +1,104 @@
+---
+const STRAPI = import.meta.env.PUBLIC_STRAPI_URL ?? 'http://127.0.0.1:1337';
+
+// Récupère les liens de navigation depuis Strapi, triés par ordre
+const res = await fetch(
+  `${STRAPI}/api/navigations?sort=ordre:asc`
+).catch(() => null);
+
+const json = res?.ok ? await res.json() : { data: [] };
+
+// Fallback si Strapi est down ou la collection vide
+const navLinks: { label: string; href: string }[] =
+  json.data?.length > 0
+    ? json.data.map((item: { label: string; href: string }) => ({
+        label: item.label,
+        href: item.href,
+      }))
+    : [
+        { label: 'Accueil',  href: '/' },
+        { label: 'Articles', href: '/articles' },
+      ];
+---
+
+<header>
+  <div class="inner">
+    <a href="/" class="logo">Mon Blog</a>
+    <nav>
+      {navLinks.map((link) => (
+        <a href={link.href}>{link.label}</a>
+      ))}
+      <a href="/login"   id="nav-login">Connexion</a>
+      <a href="/account" id="nav-account" class="btn-account">Mon compte</a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  header {
+    background: #18181b;
+    color: white;
+    padding: 1rem;
+  }
+
+  .inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    text-decoration: none;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  nav a {
+    color: #a1a1aa;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+  }
+
+  nav a:hover {
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-account {
+    background: #2563eb;
+    color: white !important;
+    padding: 0.35rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.875rem !important;
+  }
+
+  .btn-account:hover {
+    background: #1d4ed8;
+  }
+</style>
+
+<script>
+  function getCookie(name: string): string | undefined {
+    return document.cookie
+      .split('; ')
+      .find((row) => row.startsWith(name + '='))
+      ?.split('=')[1];
+  }
+
+  const isLoggedIn = getCookie('loggedIn') === '1';
+  const navLogin   = document.getElementById('nav-login');
+  const navAccount = document.getElementById('nav-account');
+
+  if (navLogin)   navLogin.style.display   = isLoggedIn ? 'none' : '';
+  if (navAccount) navAccount.style.display = isLoggedIn ? '' : 'none';
+</script>

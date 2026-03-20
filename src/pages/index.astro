@@ -1,11 +1,49 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import { fetchArticlesGraphQL } from '../lib/api';
+import type { Article } from './articles/[slug].astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// GraphQL — on demande exactement les champs nécessaires, pas plus
+const articles = await fetchArticlesGraphQL(5) as unknown as Article[];
 ---
 
-<Layout>
-	<Welcome />
+<Layout
+  title="Mon Blog Astro x Strapi"
+  description="Les derniers articles de mon blog propulsé par Astro et Strapi."
+>
+  <Hero
+    title="Mon Blog Astro x Strapi 🚀"
+    subtitle="Les dernières publications de mon CMS Headless"
+  />
+
+  <section>
+    <h2>Derniers articles</h2>
+    <ul>
+      {articles.map((article) => (
+        <ArticleCard article={article} />
+      ))}
+    </ul>
+    <a href="/articles" class="voir-tout">Voir tous les articles →</a>
+  </section>
 </Layout>
+
+<style>
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+  }
+
+  ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  .voir-tout {
+    display: inline-block;
+    margin-top: 1.5rem;
+    font-weight: 600;
+  }
+</style>

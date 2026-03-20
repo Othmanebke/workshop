@@ -1,0 +1,204 @@
+---
+// Typage des nœuds Strapi Rich Text (Blocks)
+interface TextNode {
+  type: 'text';
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  code?: boolean;
+}
+
+interface LinkNode {
+  type: 'link';
+  url: string;
+  children: TextNode[];
+}
+
+type InlineNode = TextNode | LinkNode;
+
+export interface Block {
+  type: string;
+  level?: number;       // heading : 1-6
+  format?: string;      // list : 'ordered' | 'unordered'
+  language?: string;    // code block
+  image?: {
+    url: string;
+    alternativeText?: string;
+    width?: number;
+    height?: number;
+  };
+  children: (InlineNode | Block)[];
+}
+
+interface Props {
+  content: Block[];
+}
+
+const { content } = Astro.props;
+
+/**
+ * Convertit les nœuds inline (texte avec modifieurs + liens) en HTML.
+ * Le contenu texte est échappé manuellement pour éviter les injections.
+ */
+function renderInline(children: InlineNode[]): string {
+  return children
+    .map((child) => {
+      if (child.type === 'link') {
+        const inner = renderInline(child.children as TextNode[]);
+        return `<a href="${child.url}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+      }
+      const node = child as TextNode;
+      // Échappement de base
+      let text = (node.text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      if (node.code)          text = `<code>${text}</code>`;
+      if (node.bold)          text = `<strong>${text}</strong>`;
+      if (node.italic)        text = `<em>${text}</em>`;
+      if (node.underline)     text = `<u>${text}</u>`;
+      if (node.strikethrough) text = `<s>${text}</s>`;
+
+      return text;
+    })
+    .join('');
+}
+---
+
+<div class="rich-text">
+  {content.map((bloc) => {
+    const inline = renderInline(bloc.children as InlineNode[]);
+
+    if (bloc.type === 'paragraph') {
+      return <p set:html={inline} />;
+    }
+
+    if (bloc.type === 'heading') {
+      const Tag = `h${bloc.level ?? 2}` as keyof HTMLElementTagNameMap;
+      return <Tag set:html={inline} />;
+    }
+
+    if (bloc.type === 'list') {
+      const Tag = bloc.format === 'ordered' ? 'ol' : 'ul';
+      return (
+        <Tag>
+          {(bloc.children as Block[]).map((item) => (
+            <li set:html={renderInline(item.children as InlineNode[])} />
+          ))}
+        </Tag>
+      );
+    }
+
+    if (bloc.type === 'quote') {
+      return <blockquote set:html={inline} />;
+    }
+
+    if (bloc.type === 'code') {
+      const code = (bloc.children as TextNode[]).map((c) => c.text ?? '').join('');
+      return (
+        <pre><code>{code}</code></pre>
+      );
+    }
+
+    if (bloc.type === 'image' && bloc.image) {
+      return (
+        <figure>
+          <img
+            src={bloc.image.url}
+            alt={bloc.image.alternativeText ?? ''}
+            width={bloc.image.width}
+            height={bloc.image.height}
+            loading="lazy"
+          />
+        </figure>
+      );
+    }
+
+    // Type non géré — on l'ignore silencieusement
+    return null;
+  })}
+</div>
+
+<style>
+  .rich-text {
+    line-height: 1.8;
+    font-size: 1rem;
+  }
+
+  .rich-text p {
+    margin-bottom: 1.25rem;
+  }
+
+  .rich-text h2 { font-size: 1.6rem; font-weight: 700; margin: 2rem 0 1rem; }
+  .rich-text h3 { font-size: 1.3rem; font-weight: 700; margin: 1.75rem 0 0.75rem; }
+  .rich-text h4 { font-size: 1.1rem; font-weight: 700; margin: 1.5rem 0 0.5rem; }
+
+  .rich-text ul,
+  .rich-text ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .rich-text li {
+    margin-bottom: 0.4rem;
+  }
+
+  .rich-text blockquote {
+    border-left: 4px solid #2563eb;
+    padding: 0.5rem 1rem;
+    margin: 1.5rem 0;
+    color: #52525b;
+    font-style: italic;
+    background: #eff6ff;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .rich-text pre {
+    background: #18181b;
+    color: #e4e4e7;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .rich-text code {
+    background: #f4f4f5;
+    color: #dc2626;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.875em;
+  }
+
+  .rich-text pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  .rich-text figure {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
+  .rich-text img {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .rich-text a {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+
+  .rich-text strong { font-weight: 700; }
+  .rich-text em     { font-style: italic; }
+  .rich-text u      { text-decoration: underline; }
+  .rich-text s      { text-decoration: line-through; }
+</style>

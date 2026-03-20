@@ -1,0 +1,127 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import type { Article } from '../articles/[slug].astro';
+
+interface Categorie {
+  id: number;
+  Nom: string;
+  slug: string;
+}
+
+export async function getStaticPaths() {
+  const STRAPI = import.meta.env.PUBLIC_STRAPI_URL ?? 'http://127.0.0.1:1337';
+  // Récupère toutes les catégories pour générer les routes
+  const res = await fetch(`${STRAPI}/api/categories`);
+  const json = await res.json();
+  const categories: Categorie[] = json.data ?? [];
+
+  return categories
+    .filter((cat) => cat.slug)
+    .map((cat) => ({
+      params: { slug: cat.slug },
+      props: { categorie: cat },
+    }));
+}
+
+interface Props {
+  categorie: Categorie;
+}
+
+const { categorie } = Astro.props;
+const STRAPI = import.meta.env.PUBLIC_STRAPI_URL ?? 'http://127.0.0.1:1337';
+
+// Articles de cette catégorie uniquement
+const res = await fetch(
+  `${STRAPI}/api/articles?filters[categorie][slug][$eq]=${categorie.slug}&populate=categorie&sort=createdAt:desc&pagination[pageSize]=100`
+);
+const json = await res.json();
+const articles: Article[] = json.data ?? [];
+---
+
+<Layout
+  title={`Catégorie : ${categorie.Nom}`}
+  description={`Tous les articles de la catégorie "${categorie.Nom}".`}
+>
+  <nav class="breadcrumb">
+    <a href="/">Accueil</a>
+    <span>›</span>
+    <a href="/articles">Articles</a>
+    <span>›</span>
+    <span>{categorie.Nom}</span>
+  </nav>
+
+  <header>
+    <p class="label">Catégorie</p>
+    <h1>{categorie.Nom}</h1>
+    <p class="count">
+      {articles.length} article{articles.length !== 1 ? 's' : ''}
+    </p>
+  </header>
+
+  {articles.length > 0 ? (
+    <ul>
+      {articles.map((article) => (
+        <ArticleCard article={article} categorySlug={categorie.slug} />
+      ))}
+    </ul>
+  ) : (
+    <p class="vide">Aucun article dans cette catégorie pour le moment.</p>
+  )}
+</Layout>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #71717a;
+    margin-bottom: 2rem;
+  }
+
+  .breadcrumb a {
+    color: #71717a;
+  }
+
+  .breadcrumb a:hover {
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e4e4e7;
+  }
+
+  .label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #2563eb;
+    margin-bottom: 0.4rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.4rem;
+  }
+
+  .count {
+    color: #71717a;
+    font-size: 0.9rem;
+  }
+
+  ul {
+    padding: 0;
+  }
+
+  .vide {
+    color: #71717a;
+    text-align: center;
+    padding: 3rem 0;
+  }
+</style>

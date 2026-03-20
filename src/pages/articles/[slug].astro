@@ -1,0 +1,154 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import RichText from '../../components/RichText.astro';
+import type { Block } from '../../components/RichText.astro';
+
+export interface Article {
+  id: number;
+  documentId: string;
+  Titre: string;
+  Slug: string;
+  Contenu: Block[];
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  categorie?: {
+    id: number;
+    Nom: string;
+    slug: string;
+  };
+}
+
+export async function getStaticPaths() {
+  const STRAPI = import.meta.env.PUBLIC_STRAPI_URL ?? 'http://127.0.0.1:1337';
+  const reponse = await fetch(
+    `${STRAPI}/api/articles?populate=categorie&pagination[pageSize]=100`
+  );
+  const json = await reponse.json();
+  const articles: Article[] = json.data ?? [];
+
+  const articlesValides = articles.filter((a) => a.Slug);
+  console.log(`Routes générées : ${articlesValides.length}`);
+
+  return articlesValides.map((article) => ({
+    params: { slug: String(article.Slug) },
+    props: { article },
+  }));
+}
+
+interface Props {
+  article: Article;
+}
+
+const { article } = Astro.props;
+
+// Extrait le texte brut du premier paragraphe pour la meta description
+function extraireDescription(contenu: Block[], maxLength = 160): string {
+  const premierParagraphe = contenu.find((b) => b.type === 'paragraph');
+  if (!premierParagraphe) return '';
+  const texte = premierParagraphe.children
+    .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+    .map((c) => c.text)
+    .join('');
+  return texte.length > maxLength ? texte.slice(0, maxLength - 1) + '…' : texte;
+}
+
+const description = extraireDescription(article.Contenu);
+
+// Cherche une image dans le contenu pour l'OG image
+const imageBloc = article.Contenu.find((b) => b.type === 'image');
+const ogImage = imageBloc?.image?.url;
+---
+
+<Layout title={article.Titre} description={description} ogImage={ogImage}>
+  <nav class="breadcrumb">
+    <a href="/">Accueil</a>
+    <span>›</span>
+    <a href="/articles">Articles</a>
+    {article.categorie && (
+      <>
+        <span>›</span>
+        <a href={`/categories/${article.categorie.slug}`}>{article.categorie.Nom}</a>
+      </>
+    )}
+  </nav>
+
+  <article>
+    <header>
+      {article.categorie && (
+        <a href={`/categories/${article.categorie.slug}`} class="badge">
+          {article.categorie.Nom}
+        </a>
+      )}
+      <h1>{article.Titre}</h1>
+      <time datetime={article.publishedAt}>
+        {new Date(article.publishedAt).toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })}
+      </time>
+    </header>
+
+    <div class="contenu">
+      <RichText content={article.Contenu} />
+    </div>
+  </article>
+</Layout>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #71717a;
+    margin-bottom: 2rem;
+  }
+
+  .breadcrumb a {
+    color: #71717a;
+  }
+
+  .breadcrumb a:hover {
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  article header {
+    margin-bottom: 2rem;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+  }
+
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+
+  time {
+    font-size: 0.875rem;
+    color: #71717a;
+  }
+
+  .contenu {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
+  }
+</style>

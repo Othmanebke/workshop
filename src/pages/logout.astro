@@ -1,0 +1,9 @@
+---
+export const prerender = false;
+
+// Supprime les deux cookies et redirige vers l'accueil
+Astro.cookies.delete('jwt',      { path: '/' });
+Astro.cookies.delete('loggedIn', { path: '/' });
+
+return Astro.redirect('/');
+---
