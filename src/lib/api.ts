@@ -16,25 +16,44 @@ const STRAPI_URL = import.meta.env.PUBLIC_STRAPI_URL ?? 'http://127.0.0.1:1337';
 // Helpers
 // ─────────────────────────────────────────
 
-/** Requête REST générique */
+/** Requête REST générique — retourne [] si Strapi est indisponible */
 async function rest<T>(path: string): Promise<T> {
-  const res = await fetch(`${STRAPI_URL}/api${path}`);
-  if (!res.ok) throw new Error(`REST ${path} → ${res.status}`);
-  const json = await res.json();
-  return json.data as T;
+  try {
+    const res = await fetch(`${STRAPI_URL}/api${path}`);
+    if (!res.ok) {
+      console.warn(`REST ${path} → ${res.status}`);
+      return [] as unknown as T;
+    }
+    const json = await res.json();
+    return (json.data ?? []) as T;
+  } catch (e) {
+    console.warn(`REST ${path} → fetch failed`, e);
+    return [] as unknown as T;
+  }
 }
 
-/** Requête GraphQL générique */
+/** Requête GraphQL générique — retourne données vides si Strapi est indisponible */
 async function graphql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${STRAPI_URL}/graphql`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables }),
-  });
-  if (!res.ok) throw new Error(`GraphQL → ${res.status}`);
-  const json = await res.json();
-  if (json.errors) throw new Error(json.errors[0].message);
-  return json.data as T;
+  try {
+    const res = await fetch(`${STRAPI_URL}/graphql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    });
+    if (!res.ok) {
+      console.warn(`GraphQL → ${res.status}`);
+      return {} as T;
+    }
+    const json = await res.json();
+    if (json.errors) {
+      console.warn(`GraphQL errors:`, json.errors[0].message);
+      return {} as T;
+    }
+    return json.data as T;
+  } catch (e) {
+    console.warn(`GraphQL → fetch failed`, e);
+    return {} as T;
+  }
 }
 
 // ─────────────────────────────────────────
