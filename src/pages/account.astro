@@ -9,7 +9,7 @@ const jwt = Astro.cookies.get('jwt')?.value;
 if (!jwt) return Astro.redirect('/login');
 
 // Récupère l'utilisateur courant
-const meRes = await fetch(`${STRAPI}/api/users/me`, {
+const meRes = await fetch(`${STRAPI}/api/users/me?populate=role`, {
   headers: { Authorization: `Bearer ${jwt}` },
 });
 

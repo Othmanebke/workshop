@@ -135,7 +135,7 @@ export async function fetchArticlesGraphQL(limit = 5): Promise<ArticleSummary[]>
     }
   `, { limit });
 
-  return data.articles;
+  return data.articles ?? [];
 }
 
 /**
@@ -159,7 +159,7 @@ export async function fetchAllArticlesGraphQL(): Promise<ArticleSummary[]> {
     }
   `);
 
-  return data.articles;
+  return data.articles ?? [];
 }
 
 /**
@@ -175,7 +175,7 @@ export async function fetchCategoriesGraphQL(): Promise<Categorie[]> {
     }
   `);
 
-  return data.categories;
+  return data.categories ?? [];
 }
 
 /**
@@ -200,5 +200,5 @@ export async function fetchArticlesByCategoryGraphQL(slug: string): Promise<Arti
     }
   `, { slug });
 
-  return data.articles;
+  return data.articles ?? [];
 }

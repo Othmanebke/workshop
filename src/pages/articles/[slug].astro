@@ -21,19 +21,28 @@ export interface Article {
 
 export async function getStaticPaths() {
   const STRAPI = import.meta.env.PUBLIC_STRAPI_URL ?? 'http://127.0.0.1:1337';
-  const reponse = await fetch(
-    `${STRAPI}/api/articles?populate=categorie&pagination[pageSize]=100`
-  );
-  const json = await reponse.json();
-  const articles: Article[] = json.data ?? [];
+  try {
+    const reponse = await fetch(
+      `${STRAPI}/api/articles?populate=categorie&pagination[pageSize]=100`
+    );
+    if (!reponse.ok) {
+      console.warn(`getStaticPaths articles → ${reponse.status}`);
+      return [];
+    }
+    const json = await reponse.json();
+    const articles: Article[] = json.data ?? [];
 
-  const articlesValides = articles.filter((a) => a.Slug);
-  console.log(`Routes générées : ${articlesValides.length}`);
+    const articlesValides = articles.filter((a) => a.Slug);
+    console.log(`Routes générées : ${articlesValides.length}`);
 
-  return articlesValides.map((article) => ({
-    params: { slug: String(article.Slug) },
-    props: { article },
-  }));
+    return articlesValides.map((article) => ({
+      params: { slug: String(article.Slug) },
+      props: { article },
+    }));
+  } catch (e) {
+    console.warn('getStaticPaths articles → Strapi indisponible', e);
+    return [];
+  }
 }
 
 interface Props {
